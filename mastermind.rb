@@ -24,19 +24,23 @@ end
 
 # creates the game
 class Game
-  attr_accessor :master, :guess, :ordered_common, :unordered_common
+  attr_accessor :master, :guess, :ordered_common, :unordered_common, :clue
 
   def initialize
     @master = MasterCode.new
     @guess = Guess.new
     @ordered_common = []
     @unordered_common = []
+    @clue = %w[- - - -]
   end
 
   # contains gameplay
   def play
     @master.frice
     @guess.take_colors
+    self.partial_ordered_success
+    self.partial_unordered_success
+    puts self.cluer
   end
 
   # checks if the player has won
@@ -54,7 +58,7 @@ class Game
 
   # checks if the player has guessed a correct color
   def partial_unordered_success
-    mutable_numbers = @master.numbers
+    mutable_numbers = Array.new(@master.numbers)
     0.upto(3) do |number|
       if mutable_numbers.include?(@guess.numbers[number]) && @ordered_common.none? { |num| num == number }
         mutable_numbers.delete(@guess.numbers[number])
@@ -62,6 +66,12 @@ class Game
       end
     end
     @unordered_common
+  end
+
+  def cluer
+    @ordered_common.each { |index| @clue[index] = @master.sequence[index] }
+    @unordered_common.each { |index| @clue[index] = '◦' }
+    @clue.join
   end
 
   # creates the 'master code' sequence of colors
@@ -96,6 +106,20 @@ class Game
       @numbers = []
     end
 
+    # allows the player to guess a sequence; invalid input detection built-in
+    def take_colors
+      puts MESSAGE
+      @sequence = gets.chomp.upcase.split('')
+      allowed = %w[R B G Y]
+      if @sequence.all? { |letter| allowed.include?(letter) } && @sequence.length == 4
+        @numbers = @sequence.map { |letter| self.letter_to_num(letter) }
+        @sequence = []
+        @numbers.map { |number| color_picker(@sequence, number) }
+      else
+        'Invalid input'
+      end
+    end
+
     # converts the player's letter guesses into numbers
     def letter_to_num(letter)
       case letter
@@ -108,20 +132,6 @@ class Game
       when 'Y'
         4
       end
-    end
-  end
-
-  # allows the player to guess a sequence; invalid input detection built-in
-  def take_colors
-    puts MESSAGE
-    @sequence = gets.chomp.upcase.split('')
-    allowed = %w[R B G Y]
-    if @sequence.all? { |letter| allowed.include?(letter) } && @sequence.length == 4
-      @numbers = @sequence.map { |letter| self.letter_to_num(letter) }
-      @sequence = []
-      @numbers.map { |number| color_picker(@sequence, number) }
-    else
-      'Invalid input'
     end
   end
 end
