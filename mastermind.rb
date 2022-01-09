@@ -24,23 +24,32 @@ end
 
 # creates the game
 class Game
-  attr_accessor :master, :guess, :ordered_common, :unordered_common, :clue
+  attr_accessor :master, :guess, :ordered_common, :unordered_common, :clue, :mutable_numbers
 
   def initialize
     @master = MasterCode.new
     @guess = Guess.new
     @ordered_common = []
     @unordered_common = []
-    @clue = %w[- - - -]
+    @clue = []
+    @mutable_numbers = nil
   end
 
   # contains gameplay
   def play
     @master.frice
-    @guess.take_colors
-    self.partial_ordered_success
-    self.partial_unordered_success
-    puts self.cluer
+    until self.total_success?
+      puts 'Invalid input' until @guess.take_colors
+      @mutable_numbers = Array.new(1) { @master.numbers }.flatten
+      @clue = %w[- - - -]
+      @ordered_common = []
+      @unordered_common = []
+      self.partial_ordered_success
+      self.partial_unordered_success
+      self.cluer
+      puts @clue.join
+    end
+    puts 'You won!'
   end
 
   # checks if the player has won
@@ -51,17 +60,19 @@ class Game
   # checks if the player has guessed a correct color in the correct spot
   def partial_ordered_success
     0.upto(3) do |number|
-      @ordered_common.push(number) if @master.numbers[number] == @guess.numbers[number]
+      if @master.numbers[number] == @guess.numbers[number]
+        @ordered_common.push(number)
+        @mutable_numbers.delete_at(@mutable_numbers.find_index(@master.numbers[number]))
+      end
     end
     @ordered_common
   end
 
   # checks if the player has guessed a correct color
   def partial_unordered_success
-    mutable_numbers = Array.new(@master.numbers)
     0.upto(3) do |number|
-      if mutable_numbers.include?(@guess.numbers[number]) && @ordered_common.none? { |num| num == number }
-        mutable_numbers.delete(@guess.numbers[number])
+      if @mutable_numbers.include?(@guess.numbers[number]) && @ordered_common.none? { |num| num == number }
+        @mutable_numbers.delete_at(@mutable_numbers.find_index(@guess.numbers[number]))
         @unordered_common.push(number)
       end
     end
@@ -115,8 +126,6 @@ class Game
         @numbers = @sequence.map { |letter| self.letter_to_num(letter) }
         @sequence = []
         @numbers.map { |number| color_picker(@sequence, number) }
-      else
-        'Invalid input'
       end
     end
 
@@ -135,3 +144,6 @@ class Game
     end
   end
 end
+
+game = Game.new
+game.play
